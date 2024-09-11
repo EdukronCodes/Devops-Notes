@@ -1,9 +1,9 @@
-# Cloud-Based Web Application with PostgreSQL Backend, Django, and React, Hosted on Azure DevOps
+### Cloud-Based Web Application with PostgreSQL Backend, Django, and React, Hosted on Azure DevOps
 
-### Overview
+#### Overview
 This project involves the development of a full-stack web application with PostgreSQL as the backend, Django as the server-side framework, and React for the front-end interface. The entire project is hosted and managed through Azure DevOps, leveraging its CI/CD pipelines and cloud infrastructure to ensure a scalable and reliable deployment process.
 
-### DevOps Engineer Responsibilities (3 Years)
+#### DevOps Engineer Responsibilities (3 Years)
 
 - **Cloud Infrastructure Setup:**
   - Designed and set up cloud infrastructure using Azure services like Azure Web Apps for hosting Django and React.
