@@ -255,3 +255,98 @@ After deploying, use Azure Monitor, Application Insights, and Log Analytics to t
 Set up alerts for downtime, errors, or performance degradation.
 Scale the apps by adjusting the App Service Plan settings based on traffic.
 
+Here’s the markdown format for pushing changes from different developer repositories to a single main branch and triggering a build using Azure DevOps:
+
+markdown
+Copy code
+# How to Push Latest Changes from Developer Repositories to Main Branch and Trigger a Build in Azure DevOps
+
+---
+
+## 1. Ensure Each Developer Branch is Up-to-Date
+
+Before merging, ensure that each developer's branch has the latest changes from the main branch.
+
+### Steps for Developers:
+1. **Pull Latest Changes from Main Branch:**
+   ```bash
+   git checkout <developer-branch>
+   git pull origin main
+Resolve Merge Conflicts (if any) in the local branch.
+Push the Updated Developer Branch to Remote:
+bash
+Copy code
+git push origin <developer-branch>
+2. Merge Developer Branches to Main
+After all developer branches are up-to-date, merge them into the main branch.
+
+Using Azure DevOps Pull Requests:
+In Azure DevOps, navigate to Repos > Pull Requests.
+Create a new pull request:
+Select the developer branch as the source and main branch as the target.
+Add reviewers and required comments.
+Review and approve the pull request to merge the changes into the main branch.
+Resolve any merge conflicts (if any) within the Azure DevOps UI or locally and update the pull request.
+Alternatively, merge manually via Git:
+
+Manual Merge Process:
+Checkout Main Branch Locally:
+bash
+Copy code
+git checkout main
+Merge Developer Branch into Main:
+bash
+Copy code
+git merge <developer-branch>
+Push the Updated Main Branch:
+bash
+Copy code
+git push origin main
+3. Set Up CI Pipeline for Automated Build
+Ensure you have an Azure DevOps pipeline configured to trigger automatically when changes are pushed to the main branch.
+
+Create/Modify CI Pipeline:
+Navigate to Azure DevOps > Pipelines.
+Set up a new pipeline or modify an existing pipeline to run on the main branch:
+Go to the Triggers section.
+Enable the option for Continuous Integration.
+Select the main branch as the trigger.
+Example YAML code to trigger a build when changes are pushed to main:
+
+yaml
+Copy code
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '14.x'
+- script: |
+    npm install
+    npm run build
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: 'build'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'drop'
+4. Trigger the Build After Merging
+Once the pull requests are merged into the main branch, Azure DevOps will automatically trigger the CI pipeline based on the above configuration.
+
+To Manually Trigger the Build:
+Go to Pipelines in Azure DevOps.
+Select the pipeline for your project.
+Click Run Pipeline and select the main branch to build the latest version.
+5. Monitor Build and Deployment
+Monitor the build status in Azure DevOps > Pipelines > Runs.
+Check for any build errors or warnings in the pipeline logs.
+Once the build succeeds, proceed with the deployment to the appropriate environment.
