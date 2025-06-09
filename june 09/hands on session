@@ -1,0 +1,41 @@
+Installing Jenkins on Linux/Windows and via Docker
+
+Configuring Jenkins Master-Agent architecture
+
+Creating Freestyle and Pipeline jobs
+
+Groovy scripting hands on sessions
+
+Using Jenkinsfile with Declarative Pipelines
+
+SCM Integration (Git, GitHub, Bitbucket)
+
+Parameterized Builds (String, Choice, Boolean)
+
+Triggering jobs via Webhooks
+
+Using Jenkins Environment Variables
+
+Archiving Artifacts and Fingerprinting
+
+Running Unit Tests & Publishing JUnit Reports
+
+Parallel Stage Execution
+
+Configuring Post-build Actions (email/slack notifications)
+
+Docker Build and Push to DockerHub
+
+Running Jenkins Jobs inside Docker Containers
+
+Using Jenkins Shared Libraries
+
+SonarQube Integration for Code Quality Checks
+
+Deploying builds to a remote server using SSH
+
+Securing Jenkins with RBAC and credentials plugin
+
+Backup and Restore Jenkins Configuration
+
+Using Groovy Script Console for automation/debugging
