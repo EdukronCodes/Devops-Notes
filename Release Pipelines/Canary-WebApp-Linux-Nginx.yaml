@@ -1,0 +1,95 @@
+trigger:
+- main
+
+variables:
+  azureSubscription: 'Your-Service-Connection'
+  vmName: 'your-nginx-vm'
+  resourceGroup: 'your-resource-group'
+  pythonVersion: '3.10'
+
+stages:
+- stage: Build
+  displayName: 'Build'
+  jobs:
+  - job: Build
+    displayName: 'Build Python App'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+    - script: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+    - script: |
+        source venv/bin/activate
+        pytest
+      displayName: 'Run tests'
+    - script: |
+        source venv/bin/activate
+        python setup.py sdist bdist_wheel
+      displayName: 'Build package'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'dist'
+        ArtifactName: 'python-app'
+
+- stage: DeployCanary
+  displayName: 'Deploy Canary'
+  dependsOn: Build
+  jobs:
+  - deployment: DeployCanary
+    displayName: 'Deploy to Canary VM'
+    environment: 'canary'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: python-app
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm run-command invoke \
+                  --resource-group $(resourceGroup) \
+                  --name $(vmName) \
+                  --command-id RunShellScript \
+                  --scripts "sudo systemctl stop nginx" "sudo cp $(Pipeline.Workspace)/python-app/*.whl /var/www/app/" "sudo systemctl start nginx"
+              displayName: 'Deploy to Nginx Canary VM'
+
+- stage: DeployProduction
+  displayName: 'Deploy Production'
+  dependsOn: DeployCanary
+  condition: succeeded('DeployCanary')
+  jobs:
+  - deployment: DeployProduction
+    displayName: 'Deploy to Production VM'
+    environment: 'production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: python-app
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm run-command invoke \
+                  --resource-group $(resourceGroup) \
+                  --name $(vmName) \
+                  --command-id RunShellScript \
+                  --scripts "sudo systemctl stop nginx" "sudo cp $(Pipeline.Workspace)/python-app/*.whl /var/www/app/" "sudo systemctl start nginx"
+              displayName: 'Deploy to Nginx Production VM' 

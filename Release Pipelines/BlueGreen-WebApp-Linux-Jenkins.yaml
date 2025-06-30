@@ -1,0 +1,53 @@
+trigger:
+- main
+
+variables:
+  jenkinsServiceConnection: 'Your-Jenkins-Service-Connection'
+  jenkinsJobName: 'your-bluegreen-job'
+  pythonVersion: '3.10'
+
+stages:
+- stage: Build
+  displayName: 'Build'
+  jobs:
+  - job: Build
+    displayName: 'Build Python App'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+    - script: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+    - script: |
+        source venv/bin/activate
+        pytest
+      displayName: 'Run tests'
+    - script: |
+        source venv/bin/activate
+        python setup.py sdist bdist_wheel
+      displayName: 'Build package'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'dist'
+        ArtifactName: 'python-app'
+
+- stage: DeployBlueGreen
+  displayName: 'Blue-Green Deploy via Jenkins'
+  dependsOn: Build
+  jobs:
+  - job: JenkinsDeploy
+    displayName: 'Trigger Jenkins Blue-Green Job'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: JenkinsQueueJob@2
+      inputs:
+        serverEndpoint: $(jenkinsServiceConnection)
+        jobName: $(jenkinsJobName)
+        captureConsole: true
+        # Add parameters as needed for blue-green deployment 
