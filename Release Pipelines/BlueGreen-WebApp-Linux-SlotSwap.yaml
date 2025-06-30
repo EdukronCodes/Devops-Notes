@@ -1,0 +1,79 @@
+trigger:
+- main
+
+variables:
+  azureSubscription: 'Your-Service-Connection'
+  appName: 'your-app-name'
+  resourceGroup: 'your-resource-group'
+  pythonVersion: '3.10'
+  slotName: 'staging'
+
+stages:
+- stage: Build
+  displayName: 'Build'
+  jobs:
+  - job: Build
+    displayName: 'Build Python App'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+    - script: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+    - script: |
+        source venv/bin/activate
+        pytest
+      displayName: 'Run tests'
+    - script: |
+        source venv/bin/activate
+        python setup.py sdist bdist_wheel
+      displayName: 'Build package'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'dist'
+        ArtifactName: 'python-app'
+
+- stage: DeployStaging
+  displayName: 'Deploy to Staging Slot'
+  dependsOn: Build
+  jobs:
+  - deployment: DeployStaging
+    displayName: 'Deploy to Staging'
+    environment: 'staging'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: python-app
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appName: $(appName)
+              slotName: $(slotName)
+              package: '$(Pipeline.Workspace)/python-app/*.whl'
+
+- stage: SwapSlots
+  displayName: 'Swap Slots'
+  dependsOn: DeployStaging
+  jobs:
+  - job: Swap
+    displayName: 'Swap Staging and Production Slots'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureAppServiceManage@0
+      inputs:
+        azureSubscription: $(azureSubscription)
+        Action: 'Swap Slots'
+        WebAppName: $(appName)
+        ResourceGroupName: $(resourceGroup)
+        SourceSlot: $(slotName)
+        TargetSlot: 'production' 

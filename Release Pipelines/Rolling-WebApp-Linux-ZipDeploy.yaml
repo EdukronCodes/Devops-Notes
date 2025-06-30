@@ -1,0 +1,62 @@
+trigger:
+- main
+
+variables:
+  azureSubscription: 'Your-Service-Connection'
+  appName: 'your-app-name'
+  resourceGroup: 'your-resource-group'
+  pythonVersion: '3.10'
+
+stages:
+- stage: Build
+  displayName: 'Build'
+  jobs:
+  - job: Build
+    displayName: 'Build Python App'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+    - script: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+    - script: |
+        source venv/bin/activate
+        pytest
+      displayName: 'Run tests'
+    - script: |
+        source venv/bin/activate
+        python setup.py sdist bdist_wheel
+      displayName: 'Build package'
+    - script: |
+        zip -r python-app.zip .
+      displayName: 'Create deployment zip'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'python-app.zip'
+        ArtifactName: 'python-app-zip'
+
+- stage: Deploy
+  displayName: 'Rolling Deploy'
+  dependsOn: Build
+  jobs:
+  - deployment: RollingDeploy
+    displayName: 'Rolling Deploy to Web App'
+    environment: 'production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: python-app-zip
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appName: $(appName)
+              package: '$(Pipeline.Workspace)/python-app-zip/python-app.zip' 

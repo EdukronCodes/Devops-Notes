@@ -1,0 +1,96 @@
+trigger:
+- main
+
+variables:
+  azureSubscription: 'Your-Service-Connection'
+  appName: 'your-app-name'
+  resourceGroup: 'your-resource-group'
+  frontDoorName: 'your-frontdoor-name'
+  pythonVersion: '3.10'
+
+stages:
+- stage: Build
+  displayName: 'Build'
+  jobs:
+  - job: Build
+    displayName: 'Build Python App'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+    - script: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+    - script: |
+        source venv/bin/activate
+        pytest
+      displayName: 'Run tests'
+    - script: |
+        source venv/bin/activate
+        python setup.py sdist bdist_wheel
+      displayName: 'Build package'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'dist'
+        ArtifactName: 'python-app'
+
+- stage: DeployCanary
+  displayName: 'Deploy Canary'
+  dependsOn: Build
+  jobs:
+  - deployment: DeployCanary
+    displayName: 'Deploy to Canary Slot'
+    environment: 'canary'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: python-app
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appName: $(appName)-canary
+              package: '$(Pipeline.Workspace)/python-app/*.whl'
+          - task: AzureFrontDoor@1
+            inputs:
+              ConnectedServiceName: $(azureSubscription)
+              ResourceGroupName: $(resourceGroup)
+              FrontDoorName: $(frontDoorName)
+              Action: 'UpdateRoutingRules'
+              # Add canary routing rules here
+
+- stage: DeployProduction
+  displayName: 'Deploy Production'
+  dependsOn: DeployCanary
+  condition: succeeded('DeployCanary')
+  jobs:
+  - deployment: DeployProduction
+    displayName: 'Deploy to Production Slot'
+    environment: 'production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: python-app
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appName: $(appName)
+              package: '$(Pipeline.Workspace)/python-app/*.whl'
+          - task: AzureFrontDoor@1
+            inputs:
+              ConnectedServiceName: $(azureSubscription)
+              ResourceGroupName: $(resourceGroup)
+              FrontDoorName: $(frontDoorName)
+              Action: 'UpdateRoutingRules'
+              # Switch all traffic to production 
