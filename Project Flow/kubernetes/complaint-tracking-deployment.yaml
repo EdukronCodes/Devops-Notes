@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: complaint-tracking
+  labels:
+    app: complaint-tracking
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: complaint-tracking
+  template:
+    metadata:
+      labels:
+        app: complaint-tracking
+        version: v1
+    spec:
+      containers:
+      - name: complaint-tracking
+        image: acrdevopsprod.azurecr.io/complaint-tracking:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "dev"
+        - name: DATABASE_URL
+          value: "jdbc:postgresql://postgres-dev:5432/complaint_tracking"
+        - name: DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: complaint-tracking-secret
+              key: username
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: complaint-tracking-secret
+              key: password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: logs
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: complaint-tracking-service
+spec:
+  selector:
+    app: complaint-tracking
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: complaint-tracking-secret
+type: Opaque
+data:
+  username: ZGV2dXNlcg==  # devuser in base64
+  password: ZGV2cGFzc3dvcmQ=  # devpassword in base64
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: complaint-tracking-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: complaint-tracking-dev.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: complaint-tracking-service
+            port:
+              number: 80

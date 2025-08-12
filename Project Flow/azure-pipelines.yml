@@ -1,0 +1,483 @@
+# Azure DevOps CI/CD Pipeline for Multi-Project Deployment
+# Covers: Complaint Tracking System, Healthcare System, and Internal Dev Environments
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - feature/*
+  paths:
+    include:
+    - src/*
+    - pom.xml
+    - Dockerfile
+    - terraform/*
+    - kubernetes/*
+
+variables:
+  # Project-specific variables
+  complaintTracking.version: '1.0.0'
+  healthcare.version: '2.1.0'
+  internalDev.version: '1.5.0'
+  
+  # Azure resources
+  azureSubscription: 'Azure-Production-Subscription'
+  resourceGroup: 'rg-devops-automation'
+  containerRegistry: 'acrdevopsprod.azurecr.io'
+  
+  # Environment configurations
+  dev.environment: 'Development'
+  qa.environment: 'Quality-Assurance'
+  prod.environment: 'Production'
+  
+  # Security and quality gates
+  sonarQubeUrl: 'https://sonarqube.company.com'
+  securityScanTimeout: '1800'
+
+stages:
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
+- stage: Build
+  displayName: 'Build Applications'
+  jobs:
+  - job: BuildComplaintTracking
+    displayName: 'Build Complaint Tracking System'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UseJavaVersion@0
+      inputs:
+        versionSpec: '11'
+        jdkVersionOption: '1.11'
+    
+    - task: MavenAuthenticate@0
+      inputs:
+        artifactsFeeds: 'internal-feed'
+    
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'complaint-tracking/pom.xml'
+        goals: 'clean compile test package'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.11'
+        mavenVersionOption: 'Default'
+    
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/TEST-*.xml'
+        testRunTitle: 'Complaint Tracking Tests'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: 'complaint-tracking/target/*.jar'
+        artifactName: 'complaint-tracking-jar'
+        publishLocation: 'Container'
+
+  - job: BuildHealthcare
+    displayName: 'Build Healthcare System'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UseJavaVersion@0
+      inputs:
+        versionSpec: '11'
+        jdkVersionOption: '1.11'
+    
+    - task: MavenAuthenticate@0
+      inputs:
+        artifactsFeeds: 'internal-feed'
+    
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'healthcare-system/pom.xml'
+        goals: 'clean compile test package'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/TEST-*.xml'
+        testRunTitle: 'Healthcare System Tests'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: 'healthcare-system/target/*.jar'
+        artifactName: 'healthcare-system-jar'
+        publishLocation: 'Container'
+
+  - job: BuildInfrastructure
+    displayName: 'Build Infrastructure Components'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: 'latest'
+    
+    - task: TerraformTaskV4@4
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+        workingDirectory: 'terraform/'
+        backendServiceArm: '$(azureSubscription)'
+        backendAzureRmResourceGroupName: '$(resourceGroup)'
+        backendAzureRmStorageAccountName: 'tfstatedevops'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'terraform.tfstate'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: 'terraform/'
+        artifactName: 'terraform-configs'
+        publishLocation: 'Container'
+
+# =============================================================================
+# SECURITY & QUALITY STAGE
+# =============================================================================
+- stage: SecurityQuality
+  displayName: 'Security & Quality Gates'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: SonarQubeAnalysis
+    displayName: 'SonarQube Code Quality Analysis'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: SonarQubePrepare@4
+      inputs:
+        SonarQube: 'SonarQube'
+        scannerMode: 'CLI'
+        configMode: 'manual'
+        cliProjectKey: 'devops-automation'
+        cliProjectName: 'DevOps Automation Projects'
+        cliProjectVersion: '$(Build.BuildNumber)'
+        cliSources: 'src/'
+        cliLanguage: 'java'
+        cliEncoding: 'UTF-8'
+    
+    - task: SonarQubePublish@4
+      inputs:
+        pollingTimeoutSec: '300'
+    
+    - task: SonarQubePublish@4
+      inputs:
+        pollingTimeoutSec: '300'
+
+  - job: SecurityScanning
+    displayName: 'Security Vulnerability Scanning'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: DependencyCheck@5
+      inputs:
+        projectName: 'devops-automation'
+        scanPath: '$(Build.SourcesDirectory)'
+        format: 'HTML'
+        out: '$(Build.ArtifactStagingDirectory)/security-reports'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/security-reports'
+        artifactName: 'security-reports'
+        publishLocation: 'Container'
+
+# =============================================================================
+# CONTAINER BUILD STAGE
+# =============================================================================
+- stage: ContainerBuild
+  displayName: 'Build & Push Docker Images'
+  dependsOn: SecurityQuality
+  condition: succeeded()
+  jobs:
+  - job: BuildContainers
+    displayName: 'Build Application Containers'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: Docker@2
+      inputs:
+        containerRegistry: 'Azure Container Registry'
+        repository: 'complaint-tracking'
+        command: 'buildAndPush'
+        Dockerfile: 'complaint-tracking/Dockerfile'
+        tags: |
+          $(Build.BuildNumber)
+          latest
+        arguments: '--build-arg JAR_FILE=complaint-tracking-jar/*.jar'
+    
+    - task: Docker@2
+      inputs:
+        containerRegistry: 'Azure Container Registry'
+        repository: 'healthcare-system'
+        command: 'buildAndPush'
+        Dockerfile: 'healthcare-system/Dockerfile'
+        tags: |
+          $(Build.BuildNumber)
+          latest
+        arguments: '--build-arg JAR_FILE=healthcare-system-jar/*.jar'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/container-images'
+        artifactName: 'container-images'
+        publishLocation: 'Container'
+
+# =============================================================================
+# DEVELOPMENT DEPLOYMENT STAGE
+# =============================================================================
+- stage: DeployDev
+  displayName: 'Deploy to Development'
+  dependsOn: ContainerBuild
+  condition: succeeded()
+  jobs:
+  - deployment: DeployComplaintTrackingDev
+    displayName: 'Deploy Complaint Tracking to Dev'
+    environment: $(dev.environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az aks get-credentials --resource-group $(resourceGroup) --name aks-dev
+                kubectl set image deployment/complaint-tracking complaint-tracking=$(containerRegistry)/complaint-tracking:$(Build.BuildNumber) -n dev
+                kubectl rollout status deployment/complaint-tracking -n dev
+
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm run-command invoke --resource-group $(resourceGroup) --name vm-dev-backup --command-id RunShellScript --scripts "echo 'Dev deployment completed at $(Get-Date)' > /var/log/deployment.log"
+
+  - deployment: DeployHealthcareDev
+    displayName: 'Deploy Healthcare System to Dev'
+    environment: $(dev.environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm run-command invoke --resource-group $(resourceGroup) --name vm-dev-healthcare --command-id RunShellScript --scripts "docker pull $(containerRegistry)/healthcare-system:$(Build.BuildNumber) && docker stop healthcare-app || true && docker run -d --name healthcare-app -p 8080:8080 $(containerRegistry)/healthcare-system:$(Build.BuildNumber)"
+
+# =============================================================================
+# QA DEPLOYMENT STAGE
+# =============================================================================
+- stage: DeployQA
+  displayName: 'Deploy to Quality Assurance'
+  dependsOn: DeployDev
+  condition: succeeded()
+  jobs:
+  - deployment: DeployComplaintTrackingQA
+    displayName: 'Deploy Complaint Tracking to QA'
+    environment: $(qa.environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az aks get-credentials --resource-group $(resourceGroup) --name aks-qa
+                kubectl set image deployment/complaint-tracking complaint-tracking=$(containerRegistry)/complaint-tracking:$(Build.BuildNumber) -n qa
+                kubectl rollout status deployment/complaint-tracking -n qa
+
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Run automated tests against QA environment
+                $testResults = Invoke-RestMethod -Uri "https://qa-complaint-tracking.company.com/health" -Method Get
+                if ($testResults.status -ne "healthy") {
+                    throw "QA deployment health check failed"
+                }
+                Write-Host "QA deployment health check passed"
+
+  - deployment: DeployHealthcareQA
+    displayName: 'Deploy Healthcare System to QA'
+    environment: $(qa.environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm run-command invoke --resource-group $(resourceGroup) --name vm-qa-healthcare --command-id RunShellScript --scripts "docker pull $(containerRegistry)/healthcare-system:$(Build.BuildNumber) && docker stop healthcare-app || true && docker run -d --name healthcare-app -p 8080:8080 $(containerRegistry)/healthcare-system:$(Build.BuildNumber)"
+
+# =============================================================================
+# PRODUCTION DEPLOYMENT STAGE
+# =============================================================================
+- stage: DeployProd
+  displayName: 'Deploy to Production'
+  dependsOn: DeployQA
+  condition: succeeded()
+  jobs:
+  - deployment: DeployComplaintTrackingProd
+    displayName: 'Deploy Complaint Tracking to Production'
+    environment: $(prod.environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az aks get-credentials --resource-group $(resourceGroup) --name aks-prod
+                kubectl set image deployment/complaint-tracking complaint-tracking=$(containerRegistry)/complaint-tracking:$(Build.BuildNumber) -n prod
+                kubectl rollout status deployment/complaint-tracking -n prod
+
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Production health check and monitoring
+                $prodHealth = Invoke-RestMethod -Uri "https://complaint-tracking.company.com/health" -Method Get
+                if ($prodHealth.status -ne "healthy") {
+                    throw "Production deployment health check failed"
+                }
+                
+                # Send notification to operations team
+                $webhookUrl = "$(System.AccessToken)"
+                $body = @{
+                    text = "Production deployment completed successfully for Complaint Tracking System"
+                    timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                } | ConvertTo-Json
+                
+                Invoke-RestMethod -Uri $webhookUrl -Method Post -Body $body -ContentType "application/json"
+
+  - deployment: DeployHealthcareProd
+    displayName: 'Deploy Healthcare System to Production'
+    environment: $(prod.environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az vm run-command invoke --resource-group $(resourceGroup) --name vm-prod-healthcare --command-id RunShellScript --scripts "docker pull $(containerRegistry)/healthcare-system:$(Build.BuildNumber) && docker stop healthcare-app || true && docker run -d --name healthcare-app -p 8080:8080 $(containerRegistry)/healthcare-system:$(Build.BuildNumber)"
+
+# =============================================================================
+# POST-DEPLOYMENT STAGE
+# =============================================================================
+- stage: PostDeployment
+  displayName: 'Post-Deployment Activities'
+  dependsOn: DeployProd
+  condition: succeeded()
+  jobs:
+  - job: BackupAndMonitoring
+    displayName: 'Backup & Monitoring Setup'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Setup automated backup for production VMs
+          az backup protection enable-for-vm \
+            --resource-group $(resourceGroup) \
+            --vault-name backup-vault-prod \
+            --vm vm-prod-healthcare \
+            --policy-name DefaultPolicy
+          
+          # Setup monitoring and alerting
+          az monitor action-group create \
+            --resource-group $(resourceGroup) \
+            --name action-group-prod \
+            --short-name prod-alerts \
+            --action email admin@company.com
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Create deployment summary report
+          $deploymentSummary = @{
+              BuildNumber = "$(Build.BuildNumber)"
+              DeploymentTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+              Environments = @("Dev", "QA", "Prod")
+              Applications = @("Complaint Tracking", "Healthcare System")
+              Status = "Success"
+          }
+          
+          $deploymentSummary | ConvertTo-Json | Out-File "$(Build.ArtifactStagingDirectory)/deployment-summary.json"
+          
+          # Publish deployment summary
+          Write-Host "Deployment completed successfully across all environments"
+          Write-Host "Build Number: $(Build.BuildNumber)"
+          Write-Host "Total Deployment Time: $((Get-Date) - $(Build.StartTime))"
+
+# =============================================================================
+# NOTIFICATION STAGE
+# =============================================================================
+- stage: Notifications
+  displayName: 'Send Notifications'
+  dependsOn: PostDeployment
+  condition: succeeded()
+  jobs:
+  - job: SendDeploymentNotifications
+    displayName: 'Send Deployment Notifications'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Send success notification to stakeholders
+          $teamsWebhook = "$(TeamsWebhookUrl)"
+          $body = @{
+              title = "🚀 Deployment Successful"
+              text = "All applications deployed successfully across Dev, QA, and Production environments"
+              facts = @(
+                  @{name = "Build Number"; value = "$(Build.BuildNumber)"},
+                  @{name = "Deployment Time"; value = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")},
+                  @{name = "Applications"; value = "Complaint Tracking, Healthcare System"},
+                  @{name = "Status"; value = "✅ Success"}
+              )
+          } | ConvertTo-Json -Depth 10
+          
+          Invoke-RestMethod -Uri $teamsWebhook -Method Post -Body $body -ContentType "application/json"
+          
+          Write-Host "Deployment notifications sent successfully"
