@@ -19,6 +19,8 @@ Ensuring revenue-impacting issues are resolved quickly and that status and post-
 - Track and report on checkout/payment SLAs, MTTR, and incident trends; drive improvements to reduce recurrence and improve response time.
 - Support pipeline and deployment rollback when checkout or payment issues are release-related; work with development and platform teams on fix and prevention.
 
+**Detailed Notes:** Checkout and payment are revenue-critical; P1 (e.g. checkout down) should have immediate response and clear escalation to payment providers and security. Runbooks must cover rollback, customer communication (status page, social), and PCI-safe handling of any suspected data exposure. Use Azure Monitor and Application Insights to correlate alerts with pipeline and deployment events. Post-incident summaries should be clear for business and compliance; retain evidence for PCI and internal audit. Coordinate with development on rollback when incidents are release-related; track MTTR and recurrence to drive pipeline and process improvements.
+
 ---
 
 ## 2. [Retail] Store POS and Network Incident Support
@@ -37,6 +39,8 @@ Minimizing store downtime and ensuring critical periods (e.g. Black Friday) have
 - Support peak periods (e.g. Black Friday) with dedicated support and clear communication; ensure critical selling periods have adequate coverage and status updates.
 - Track and report on POS/network incident volume, resolution time, and store impact; drive improvements to reduce recurrence and improve first-line resolution.
 - Coordinate with DevOps development on deploy and rollback when POS or inventory sync issues are release-related; support store ops during rollouts.
+
+**Detailed Notes:** Store POS and network issues span many locations; use Azure DevOps Boards for tickets and track by store, region, and issue type. Runbooks should cover register reboot, network failover, sync issues, and when to escalate to field IT or vendors. Peak periods (e.g. Black Friday) need dedicated support and clear store communication; consider follow-the-sun or extra coverage. Monitor incident volume and resolution time by store and region to spot patterns (e.g. bad deploy, vendor outage). When issues are release-related, work with DevOps development on rollback and store-side verification; document store impact for post-incident review.
 
 ---
 
@@ -57,6 +61,8 @@ Ensuring passengers and agents can book and modify reservations with minimal dis
 - Coordinate with DevOps development on deploy and rollback when booking issues are release-related; support ops during change windows and cutovers.
 - Ensure status and post-incident communication are clear for business and operations so trust and coordination are maintained during and after incidents.
 
+**Detailed Notes:** Booking system incidents affect passengers and agents; severity should reflect revenue and customer impact (e.g. booking down = P1). Runbooks must cover GDS issues, payment timeouts, overbooking, and escalation to revenue management and airport ops. Use Azure Monitor and Application Insights to detect booking failures and availability errors; correlate with pipeline and release history. Track SLAs and incident trends; share learnings with development and ops to reduce recurrence. When incidents are release-related, support rollback and change window discipline; document for CAB and post-incident review.
+
 ---
 
 ## 4. [Pharma] Clinical and Regulatory Systems Support
@@ -75,6 +81,8 @@ Ensuring clinical and regulatory can rely on systems for inspections and submiss
 - Document incidents and resolution for audits; ensure clinical and regulatory can rely on systems for inspections and submissions with clear evidence and communication.
 - Track and report on clinical/regulatory system SLAs and incident trends; drive improvements so the same issues do not recur and response time meets expectations.
 - Coordinate with DevOps development on deploy and rollback when clinical/regulatory issues are release-related; support during submission and inspection preparation.
+
+**Detailed Notes:** Clinical and regulatory systems support inspections and submissions; incidents must be triaged without compromising compliance or audit trail. Runbooks should cover sync errors, submission failures, audit trail gaps, and when to escalate to clinical and regulatory. Document every incident and resolution for audits; ensure corrective action is tracked and evidence is retained. Use Azure Boards and pipeline audit trail to correlate incidents with changes when relevant. When compliance may be affected, escalate immediately and document; support during submission and inspection preparation so systems remain inspection-ready.
 
 ---
 
@@ -95,6 +103,8 @@ Ensuring discovery and browse experience meet availability and quality targets.
 - Coordinate with DevOps development on deploy and rollback when search or catalog issues are release-related; support during index or catalog deployments.
 - Ensure runbooks and SLAs stay current as search and catalog systems evolve; document and train so support can resolve common issues without delay.
 
+**Detailed Notes:** Search and catalog incidents affect discovery and browse; define SLAs for search health, index rebuilds, and catalog sync. Runbooks should cover index rebuild, catalog sync failures, and escalation to product and merchandising when customer-facing. Use Azure Cognitive Search and Monitor to detect indexing delays and catalog errors; correlate with pipeline and deploy history. When issues are release-related, support rollback and reindex; document resolution for post-incident review. Track search quality and availability metrics; drive improvements so discovery and browse meet targets and support can resolve issues faster.
+
 ---
 
 ## 6. [Retail] Loyalty and Promotions Platform Support
@@ -113,6 +123,8 @@ Ensuring loyalty and promos run as intended during peak and seasonal campaigns.
 - Track SLAs and incident trends for loyalty and promotions; report and improve so campaign and redemption issues are resolved quickly and recurrence is reduced.
 - Coordinate with DevOps development on deploy and rollback when loyalty/promo issues are release-related; support during campaign launches and peak periods.
 - Ensure runbooks and escalation paths stay current; document and train so support can handle common loyalty and promo issues without unnecessary escalation.
+
+**Detailed Notes:** Loyalty and promotions are critical during peak and seasonal campaigns; incidents (campaign misconfig, double accrual, partner API issues) should be resolved within SLA. Runbooks must cover campaign launch, point accrual, redemption, and escalation to marketing and vendors. Use Azure Monitor and Application Insights to detect loyalty and promo failures; track SLAs and incident trends. When issues are release-related, coordinate with DevOps development on rollback; support during campaign launches and peak periods. Document and train so common issues (e.g. wrong promo code, partner timeout) can be resolved or escalated without delay.
 
 ---
 
@@ -133,6 +145,8 @@ Ensuring crew and operations can rely on systems for daily and irregular operati
 - Coordinate with DevOps development on deploy and rollback when crew/ops issues are release-related; support during deployment windows and cutovers.
 - Ensure runbooks and escalation paths stay current with union and regulatory changes; document and train so support can triage and escalate appropriately.
 
+**Detailed Notes:** Crew and ops scheduling is subject to union and regulatory rules; incidents (pairing, legality, roster) need fast resolution and correct escalation to crew planning and union liaison. Runbooks must cover scheduling failures, data sync issues, and regulatory edge cases. Use Azure Boards and Monitor to track incidents; correlate with pipeline when issues are release-related. Document for compliance; support during deployment windows and cutovers. Track SLAs and drive improvements so crew and operations can rely on systems for daily and irregular operations.
+
 ---
 
 ## 8. [Pharma] Serialization and Track-and-Trace Support
@@ -151,6 +165,8 @@ Ensuring serialization meets regulatory requirements and that incidents are docu
 - Document incidents and resolution for audit and corrective action; ensure serialization meets regulatory requirements and that evidence is available for inspections.
 - Track and report on serialization incident trends and resolution time; drive improvements so serialization stays reliable and compliance is maintained.
 - Coordinate with DevOps development on deploy and rollback when serialization issues are release-related; support during serialization system updates.
+
+**Detailed Notes:** Serialization (e.g. DSCSA, FMD) requires chain-of-custody and regulatory reporting; incidents must be triaged and resolved without gap in traceability. Runbooks should cover serialization gaps, verification failures, reporting issues, and escalation to packaging and supply chain. Document every incident for audit and corrective action; ensure evidence is retained for inspections. When chain-of-custody may be affected, escalate immediately. Use Azure Boards and pipeline audit to correlate with changes; support during serialization system updates and regulatory deadlines.
 
 ---
 
@@ -171,6 +187,8 @@ Ensuring app updates reach users on time and that critical bugs can be addressed
 - Track and report on app release and store incident trends; drive improvements so releases stay on schedule and store presence remains correct.
 - Coordinate with DevOps development on pipeline and signing when app release issues are build or submission-related; support during hotfix and store submission.
 
+**Detailed Notes:** Mobile app release and store issues (build, signing, submission, store rejection) need quick resolution so app updates reach users on time. Runbooks must cover store rejection reasons, signing issues, staged rollout problems, and escalation to app and store support. Use Azure Pipelines and Artifacts history to correlate with build and submission; support hotfix and expedited release when critical bugs occur. Document resolution patterns so recurring issues (e.g. store policy change, cert expiry) are resolved or prevented faster. Track release and store incident trends; drive improvements with development.
+
 ---
 
 ## 10. [Retail] Omnichannel Order Management Support
@@ -190,6 +208,8 @@ Ensuring order and fulfillment SLAs are met during normal and peak periods.
 - Coordinate with DevOps development on deploy and rollback when OMS or fulfillment issues are release-related; support during peak and seasonal deployments.
 - Ensure runbooks and escalation paths stay current; document and train so support can triage and resolve common OMS and fulfillment issues effectively.
 
+**Detailed Notes:** OMS and fulfillment (BOPIS, ship-from-store, returns) affect customer and store experience; incidents should be resolved within SLA with minimal impact. Runbooks must cover order routing failures, inventory sync, carrier integration, and escalation to fulfillment and stores. Use Azure Monitor and Application Insights to detect OMS and fulfillment failures; correlate with pipeline during peak and seasonal deployments. Track SLAs and incident trends; when issues are release-related, support rollback and document for post-incident review. Document and train so common issues can be triaged and resolved without delay.
+
 ---
 
 ## 11. [Airlines] Flight Operations and Dispatch Support
@@ -208,6 +228,8 @@ Ensuring dispatch and flight ops can rely on systems 24/7 with clear escalation 
 - Document incidents and resolution for compliance and improvement; ensure dispatch and flight ops can rely on support with clear communication and follow-up.
 - Track and report on flight ops/dispatch incident trends and resolution time; drive improvements so safety-critical systems stay available and issues are resolved quickly.
 - Coordinate with DevOps development on deploy and rollback when flight ops/dispatch issues are release-related; support during cutover windows and changes.
+
+**Detailed Notes:** Flight ops and dispatch are safety-critical; incidents (planning, weight-and-balance, regulatory tools) need immediate triage and escalation to dispatch and safety when operations could be affected. Runbooks must cover safety-critical scenarios and coordination with dispatch and safety. Use Azure Boards and Monitor; document incidents for compliance and improvement. When issues are release-related, support rollback and cutover discipline; ensure 24/7 reliability and clear escalation. Track incident trends and resolution time; drive improvements so safety-critical systems stay available.
 
 ---
 

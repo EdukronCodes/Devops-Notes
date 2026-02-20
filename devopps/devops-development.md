@@ -479,6 +479,8 @@ Supporting customer experience and ops with reliable, frequent releases.
 - Support CX and ops when pipeline or system issues occur; coordinate so passengers and agents have working tools during disruptions.
 - Monitor pipeline and deployment health; drive reliable, frequent releases so customer service and disruption tools stay current and stable.
 
+**Detailed Notes:** Customer service and disruption (rebooking, compensation, notifications) are critical during irregular operations; avoid deploy during active weather or large-scale disruption. Use high-availability deploy (slots or blue-green) and ensure rebooking and notification systems stay up; define fast rollback. Coordinate with CX and ops on release timing; they must be able to rely on tools during high volume. Document integration with reservation and communication systems; test rebooking and compensation flows in staging. Retain pipeline and release logs for operational review after major disruptions.
+
 ---
 
 ## 24. [Retail] Returns and Refunds Automation Pipeline
@@ -497,6 +499,8 @@ Enabling customer service and operations to ship returns and refund automation s
 - Document pipeline design and runbooks; support CX and ops when returns or refunds issues are pipeline-related or require a rollback.
 - Monitor pipeline and deployment health; ensure returns and refund automation can be updated frequently without customer or revenue impact.
 - Support CX and ops when pipeline or deployment issues occur; help isolate causes and coordinate resolution with fulfillment and payment teams.
+
+**Detailed Notes:** Returns and refunds touch OMS and payment; deploy must not disrupt active returns or customer credits. Use approval gates for production and especially during peak (e.g. post-holiday returns); define rollback that restores return and refund logic without data loss. Coordinate with CX and ops on release timing; validate return portal and refund provider integration post-deploy. Document consistency requirements with OMS and payment; test return authorization and refund flow in staging. Monitor return and refund metrics after release; roll back if error rate or customer impact increases.
 
 ---
 
@@ -517,6 +521,8 @@ Enabling non-engineers to ship content safely while keeping audit and brand cont
 - Monitor pipeline and deployment success; ensure content and campaigns go live on time and that rollback is available when incorrect content is published.
 - Coordinate with marketing when pipeline or CMS issues occur; help isolate causes and support rollback or fix.
 
+**Detailed Notes:** Content and CMS pipelines often support approval workflow (e.g. preview, MLR, scheduled publish); use Azure Boards or similar for approvals and link to pipeline. Rollback should restore prior content state; ensure CMS and CDN/cache invalidation are part of rollback procedure. Non-engineers (marketing, merchandising) may trigger publish; document and train so they use the pipeline safely and do not bypass approval. Schedule deploys outside campaign go-live when possible; if not, ensure rollback is fast so wrong content can be reverted. Retain audit of who published what and when for brand and compliance.
+
 ---
 
 ## 26. [Retail] Store Assortment and Planogram Pipeline
@@ -535,6 +541,8 @@ Enabling space and category teams to release assortment and planogram updates sa
 - Document pipeline design, rollout strategy, and runbooks; support space and category when assortment or planogram issues are pipeline-related.
 - Monitor pipeline and deployment success across regions and formats; fix failures and improve so assortment and planogram updates can be released frequently.
 - Support space and category when pipeline or deployment issues occur; help isolate causes and coordinate resolution.
+
+**Detailed Notes:** Assortment and planogram affect store layout and space; deploy in sync with store openings and resets. Use deployment groups or stages by region or format so rollout is controlled; planogram and fixture data must stay consistent per format. Coordinate with space and category on release timing; validate planogram generation and data sync post-deploy. Document dependency on assortment and space data sources; test in staging with representative store and format data. Rollback at region or format level should be documented and tested so one bad deploy does not affect all stores.
 
 ---
 
@@ -555,6 +563,8 @@ Enabling revenue management and analytics to ship model and rule changes frequen
 - Monitor pipeline and deployment health; ensure model and rule updates can be shipped frequently with measurable impact and low risk.
 - Support revenue management and analytics when pipeline or deployment issues occur; help isolate causes and coordinate resolution.
 
+**Detailed Notes:** Revenue management and demand forecasting drive pricing and capacity decisions; deploy during low-booking windows and validate revenue and demand data consistency. Use A/B or canary for model and rule changes so impact is measurable and reversible; define rollback trigger (e.g. revenue or forecast error degradation). Coordinate with revenue management and analytics on success metrics and release timing; staging should mirror booking curve and schedule where possible. Retain pipeline and model version logs for commercial and regulatory review. Document dependency on booking and schedule data; ensure pipeline and model inputs are aligned.
+
 ---
 
 ## 28. [Pharma] Medical Affairs and Promo Materials Pipeline
@@ -573,6 +583,8 @@ Enabling medical and marketing to release approved materials and workflow update
 - Document pipeline design, approval flow, and runbooks for audits; keep documentation current and accessible to medical, marketing, and compliance.
 - Support medical and marketing when pipeline or release issues occur; help resolve and document so audit readiness is maintained.
 - Monitor pipeline and audit trail completeness; improve so medical affairs and promo updates can be released in a controlled, compliant way.
+
+**Detailed Notes:** Medical affairs and promotional materials require MLR and compliance approval; pipeline must enforce approval workflow and retain full audit trail (who approved what, when). Sunshine Act and promotional compliance apply; ensure deploy and content approval paths do not bypass compliance. Use Azure Boards for approval and link work items to pipeline runs; support multi-region and multi-brand rollout with appropriate gates. Document for audits: approval flow, content versioning, and deploy history. Rollback should restore prior approved content state; test so audit trail remains intact after rollback.
 
 ---
 
@@ -593,6 +605,8 @@ Enabling marketplace and partner teams to ship seller and platform features safe
 - Monitor pipeline and deployment success across markets; ensure seller and marketplace updates can be shipped frequently with minimal seller impact.
 - Support marketplace and partner teams when pipeline or deployment issues occur; help isolate causes and coordinate resolution.
 
+**Detailed Notes:** Marketplace pipelines touch seller onboarding, catalog sync, and commission logic; deploy must not disrupt active sellers or break seller-facing APIs. Use staged rollout (e.g. by marketplace or seller segment) and per-market rollback so one region or segment can be reverted without affecting others. Coordinate with marketplace and partner teams on release timing and validation; test seller flows and commission calculation in staging. Document multi-tenant and multi-currency behavior; ensure config and secrets are isolated per marketplace where required. Monitor seller and marketplace metrics after release; roll back if seller impact or commission errors appear.
+
 ---
 
 ## 30. [Retail] Demand Forecasting and Replenishment Pipeline
@@ -611,3 +625,5 @@ Enabling planning and merchandising to iterate on forecast and replenishment mod
 - Document pipeline design and runbooks; support planning and merchandising when pipeline or deployment issues occur.
 - Monitor pipeline and deployment health; ensure forecast and replenishment updates can be released frequently without data or process disruption.
 - Support planning and merchandising when pipeline or deployment issues occur; help isolate causes and coordinate resolution.
+
+**Detailed Notes:** Demand and replenishment pipelines drive forecast and reorder logic; deploy in sync with seasonal and promotional calendars so planning and buying have consistent inputs. Use validation gates so inventory and forecast data stay consistent and rollback is safe for downstream replenishment and buying systems. Coordinate with planning and merchandising on release timing; staging should use production-like demand and inventory data (anonymized if needed). Document dependency on demand and inventory data sources; ensure pipeline runs after data refresh where relevant. Monitor forecast accuracy and replenishment metrics after release; roll back if forecast error or replenishment anomalies increase.
